@@ -177,39 +177,49 @@ public:
     }
     //-------------------------------------------//
   
+    //--------------finding the vertical line closest to center of image------------------//
+     int x=(cv_ptr->image.cols)/2,y=(cv_ptr->image.rows)/2;
+      Point imageCenter(x,y);
+    vector<Vec2f> verticalLines;
+    for(size_t i=0;i<lines.size();i++)
+    {
+      float rho = lines[i][0], theta = lines[i][1];
+      if(theta<CV_PI/4||theta>0.75*CV_PI)
+      {
+        verticalLines.push_back(Vec2f(rho,theta));
+      }
+    }
+    float min=cv_ptr->image.cols+cv_ptr->image.rows;
+    int minPos=-1;
+    for(size_t i=0;i<verticalLines.size();i++)
+    {
+      float rho = verticalLines[i][0],theta=verticalLines[i][1];
+       double a = cos(theta), b = sin(theta);
+       double perpendicularDist=fabs(x*a+y*b-rho);
+      if(perpendicularDist<min)
+      {
+        min=perpendicularDist;
+        minPos=i;
+      }
+    }
 
-    //---------------Finding keypoints--------------//
-   
-     hough_output.copyTo(keyPoints);
-     cvtColor(hough_output,keyPoints,CV_GRAY2BGR);
 
-     //----------------------finding intersection of lines------------------------//
-      for( size_t i = 0; i < lines.size(); i++ )
-        {
-          float theta= lines[i][1] ,rho= lines[i][0];
-          
-          for(size_t j = i+1; j < lines.size(); j++)
-          {
-            if(fabs(theta-lines[j][1])>0.1)      // if two lines are not parallel we will find their intersection   
-            {
-                Point intersectionPoint;
-                findInterscetion(lines[i][0],lines[i][1],lines[j][0],lines[j][1],cv_ptr->image.rows,cv_ptr->image.cols,&intersectionPoint);
-                circle(keyPoints,intersectionPoint,10,Scalar(0,200,0));    // a green circle denotes the intersection of two non parallel lines              
-                 
-            }
+    //---------------------------------------------//
+          Mat keyPoints(cv_ptr->image.rows,cv_ptr->image.cols,CV_8UC3,Scalar(0,0,0));
+          float rho = verticalLines[minPos][0], theta = verticalLines[minPos][1];
+           Point pt1, pt2;
+           double a = cos(theta), b = sin(theta);
+           double x0 = a*rho, y0 = b*rho;
+           pt1.x = cvRound(x0 + 1000*(-b));
+           pt1.y = cvRound(y0 + 1000*(a));
+           pt2.x = cvRound(x0 - 1000*(-b));
+           pt2.y = cvRound(y0 - 1000*(a));
+           line( keyPoints, pt1, pt2, Scalar(255,255,255), 4, CV_AA);
 
-          }
-         } 
-      //-------------------finding perpendicular distances to lines----------------------//
-         int x=(cv_ptr->image.cols)/2,y=(cv_ptr->image.rows)/2;
-      
-         Point imageCenter(x,y);
-         int projection_x,projection_y;
-        for(size_t i=0;i<lines.size();i++)
-         {
-          float theta= lines[i][1] ,rho= lines[i][0];
-          double a=cos(theta);
-          double b=sin(theta);          
+
+         
+         
+          int projection_x,projection_y;        
           double perpendicularDist=fabs(x*a+y*b-rho);
           //------------finding out projection points--------------//
               if(theta==0||theta==CV_PI)
@@ -224,8 +234,8 @@ public:
               }
               else
               {
-                 projection_x=(int)((rho+x*a-y*b)/(2*a));
-                 projection_y=(int)((rho-x*a+y*b)/(2*b));
+                 projection_x=(int)(rho*a+x*b*b-y*b*a);
+                 projection_y=(int)(rho*b-x*a*b+y*a*a);
               }
               //--------------projection points have been found out.Now we need to publish all the data----------------//
           perp.rho=rho;
@@ -239,10 +249,7 @@ public:
           perpendicular_distance.publish(perp);      
           line(keyPoints,imageCenter, Point(projection_x,projection_y),Scalar(20,20,255));                   
           circle(keyPoints,imageCenter,(int)perpendicularDist,Scalar(238,238,175));   //A red circle having a radius equal to the perpendicular distance is drawn
-         }
-    // Update GUI Window
-  
- 
+         
     
     cv::imshow(OPENCV_WINDOW, canny_output);
     cv::imshow("keyPoints", keyPoints);

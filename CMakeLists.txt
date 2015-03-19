@@ -173,6 +173,11 @@ add_executable(line_detect src/line_detect.cpp)
 target_link_libraries(line_detect ${catkin_LIBRARIES})
 add_dependencies(line_detect quad_generate_messages_cpp)
 
+add_executable(center_line src/center_line.cpp)
+target_link_libraries(center_line ${catkin_LIBRARIES})
+add_dependencies(center_line quad_generate_messages_cpp)
+
+
 add_executable(node_detect src/node_detect.cpp)
 target_link_libraries(node_detect ${catkin_LIBRARIES})
 add_dependencies(node_detect quad_generate_messages_cpp)
